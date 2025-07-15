@@ -1,0 +1,86 @@
+name: 'Dokploy Deploy - Supports Latest Version'
+description: 'Find applicationId from project & application names, then deploy, using the new x-api-key header.'
+branding:
+  icon: upload-cloud
+  color: gray-dark
+
+inputs:
+  dokploy_url:
+    description: 'Dokploy base URL, e.g. https://dokploy.example.com'
+    required: true
+  api_key:
+    description: 'Dokploy API key (use x-api-key header), creating in Setting/My Profile Page'
+    required: true
+  project_name:
+    description: 'Dokploy project name'
+    required: true
+  application_name:
+    description: 'Dokploy application name (or compose name)'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Ensure jq
+      shell: bash
+      run: |
+        if ! command -v jq &>/dev/null; then
+          sudo apt-get -qq update
+          sudo apt-get -qq install -y jq
+        fi
+
+    - name: Get applicationId
+      id: getid
+      shell: bash
+      env:
+        URL:  ${{ inputs.dokploy_url }}
+        KEY:  ${{ inputs.api_key }}
+        PNAME:${{ inputs.project_name }}
+        ANAME:${{ inputs.application_name }}
+      run: |
+        set -euo pipefail
+
+        echo "🔍 Fetching project list…"
+        data=$(curl -sS -H 'accept: application/json' -H "x-api-key: $KEY" "$URL/api/project.all")
+        echo "::add-mask::$data"   
+
+        app_id=$(echo "$data" | jq -r --arg p "$PNAME" --arg a "$ANAME" '
+          .[] | select(.name == $p) |
+          ((.applications // [])[]? | select(.name == $a) | .applicationId) // empty
+        ')
+        if [ -z "$app_id" ]; then
+          app_id=$(echo "$data" | jq -r --arg p "$PNAME" --arg a "$ANAME" '
+            .[] | select(.name == $p) |
+            ((.compose // [])[]? | select(.name == $a) | .composeId) // empty
+          ')
+        fi
+
+        if [ -z "$app_id" ]; then
+          echo "❌  Not found: project=\"$PNAME\" application=\"$ANAME\""
+          exit 1
+        fi
+
+        echo "application_id=$app_id" >> "$GITHUB_OUTPUT"
+        echo "✅  Found applicationId: $app_id"
+
+    - name: Trigger deployment
+      shell: bash
+      env:
+        URL:  ${{ inputs.dokploy_url }}
+        KEY:  ${{ inputs.api_key }}
+        AID:  ${{ steps.getid.outputs.application_id }}
+      run: |
+        echo "🚀 Deploying application $AID …"
+        code=$(curl -sS -w '%{http_code}' -o /tmp/resp \
+          -X POST "$URL/api/application.deploy" \
+          -H 'accept: application/json' \
+          -H 'Content-Type: application/json' \
+          -H "x-api-key: $KEY" \
+          -d "{\"applicationId\":\"$AID\"}")
+        cat /tmp/resp
+        if [[ "$code" =~ ^2 ]]; then
+          echo "🎉  Dokploy accepted deploy request (HTTP $code)"
+        else
+          echo "❌  Deployment failed (HTTP $code)"
+          exit 1
+        fi
