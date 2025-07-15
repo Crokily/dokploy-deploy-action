@@ -33,10 +33,10 @@ runs:
       id: getid
       shell: bash
       env:
-        URL:  ${{ inputs.dokploy_url }}
-        KEY:  ${{ inputs.api_key }}
-        PNAME:${{ inputs.project_name }}
-        ANAME:${{ inputs.application_name }}
+        URL: ${{ inputs.dokploy_url }}
+        KEY: ${{ inputs.api_key }}
+        PNAME: ${{ inputs.project_name }}
+        ANAME: ${{ inputs.application_name }}
       run: |
         set -euo pipefail
 
@@ -66,9 +66,9 @@ runs:
     - name: Trigger deployment
       shell: bash
       env:
-        URL:  ${{ inputs.dokploy_url }}
-        KEY:  ${{ inputs.api_key }}
-        AID:  ${{ steps.getid.outputs.application_id }}
+        URL: ${{ inputs.dokploy_url }}
+        KEY: ${{ inputs.api_key }}
+        AID: ${{ steps.getid.outputs.application_id }}
       run: |
         echo "🚀 Deploying application $AID …"
         code=$(curl -sS -w '%{http_code}' -o /tmp/resp \
