@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Dokploy
-        uses: Crokily/dokploy-deploy-action@main
+        uses: Crokily/dokploy-deploy-action@v1.0.1
         with:
           dokploy_url: 'https://dokploy.example.com'
           api_key: ${{ secrets.DOKPLOY_API_KEY }}
@@ -84,7 +84,7 @@ jobs:
 
 ```yaml
 - name: Deploy Application
-  uses: Crokily/dokploy-deploy-action@main
+  uses: Crokily/dokploy-deploy-action@v1.0.1
   with:
     dokploy_url: 'https://dokploy.mycompany.com'
     api_key: ${{ secrets.DOKPLOY_API_KEY }}
@@ -96,7 +96,7 @@ jobs:
 
 ```yaml
 - name: Deploy Compose Project
-  uses: Crokily/dokploy-deploy-action@main
+  uses: Crokily/dokploy-deploy-action@v1.0.1
   with:
     dokploy_url: 'https://dokploy.mycompany.com'
     api_key: ${{ secrets.DOKPLOY_API_KEY }}
@@ -131,7 +131,7 @@ jobs:
     
     steps:
       - name: Deploy to ${{ matrix.environment }}
-        uses: Crokily/dokploy-deploy-action@main
+        uses: Crokily/dokploy-deploy-action@v1.0.1
         with:
           dokploy_url: ${{ secrets.DOKPLOY_URL }}
           api_key: ${{ secrets.DOKPLOY_API_KEY }}
