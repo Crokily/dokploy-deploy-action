@@ -48,11 +48,14 @@ runs:
           .[] | select(.name == $p) |
           ((.applications // [])[]? | select(.name == $a) | .applicationId) // empty
         ')
+        app_type="application"
+        
         if [ -z "$app_id" ]; then
           app_id=$(echo "$data" | jq -r --arg p "$PNAME" --arg a "$ANAME" '
             .[] | select(.name == $p) |
             ((.compose // [])[]? | select(.name == $a) | .composeId) // empty
           ')
+          app_type="compose"
         fi
 
         if [ -z "$app_id" ]; then
@@ -61,7 +64,8 @@ runs:
         fi
 
         echo "application_id=$app_id" >> "$GITHUB_OUTPUT"
-        echo "✅  Found applicationId: $app_id"
+        echo "application_type=$app_type" >> "$GITHUB_OUTPUT"
+        echo "✅  Found ${app_type}Id: $app_id"
 
     - name: Trigger deployment
       shell: bash
@@ -69,14 +73,24 @@ runs:
         URL: ${{ inputs.dokploy_url }}
         KEY: ${{ inputs.api_key }}
         AID: ${{ steps.getid.outputs.application_id }}
+        APP_TYPE: ${{ steps.getid.outputs.application_type }}
       run: |
-        echo "🚀 Deploying application $AID …"
+        echo "🚀 Deploying $APP_TYPE $AID …"
+        
+        if [ "$APP_TYPE" = "compose" ]; then
+          api_endpoint="$URL/api/compose.deploy"
+          json_field="composeId"
+        else
+          api_endpoint="$URL/api/application.deploy"
+          json_field="applicationId"
+        fi
+        
         code=$(curl -sS -w '%{http_code}' -o /tmp/resp \
-          -X POST "$URL/api/application.deploy" \
+          -X POST "$api_endpoint" \
           -H 'accept: application/json' \
           -H 'Content-Type: application/json' \
           -H "x-api-key: $KEY" \
-          -d "{\"applicationId\":\"$AID\"}")
+          -d "{\"$json_field\":\"$AID\"}")
         cat /tmp/resp
         if [[ "$code" =~ ^2 ]]; then
           echo "🎉  Dokploy accepted deploy request (HTTP $code)"
